@@ -35,23 +35,6 @@ pipeline {
           }
         }
 
-        stage('stash build for coverage') {
-          steps {
-            stash includes: 'build/**/*', name: 'build_sitl_coverage', useDefaultExcludes: false
-          }
-          when {
-            environment name: 'PX4_CMAKE_BUILD_TYPE', value: 'Coverage'
-          }
-        }
-
-        stage('unit tests') {
-          steps {
-            sh 'export'
-            sh 'make px4_sitl_test test_results_junit'
-            junit 'build/px4_sitl_test/JUnitTestResults.xml'
-          }
-        }
-
         stage('build sitl_gazebo') {
           steps {
             sh 'export'
@@ -91,44 +74,6 @@ pipeline {
               vehicle: "plane"
             ],
 
-            [
-              name: "MC_box",
-              test: "mavros_posix_test_mission.test",
-              mission: "MC_mission_box",
-              vehicle: "iris"
-            ],
-            [
-              name: "MC_offboard_att",
-              test: "mavros_posix_tests_offboard_attctl.test",
-              mission: "",
-              vehicle: "iris"
-            ],
-            [
-              name: "MC_offboard_pos",
-              test: "mavros_posix_tests_offboard_posctl.test",
-              mission: "",
-              vehicle: "iris"
-            ],
-
-            [
-              name: "VTOL_standard",
-              test: "mavros_posix_test_mission.test",
-              mission: "VTOL_mission_1",
-              vehicle: "standard_vtol"
-            ],
-            [
-              name: "VTOL_tailsitter",
-              test: "mavros_posix_test_mission.test",
-              mission: "VTOL_mission_1",
-              vehicle: "tailsitter"
-            ],
-            [
-              name: "VTOL_tiltrotor",
-              test: "mavros_posix_test_mission.test",
-              mission: "VTOL_mission_1",
-              vehicle: "tiltrotor"
-            ],
-
           ]
 
           def test_nodes = [:]
@@ -140,56 +85,6 @@ pipeline {
         } // script
       } // steps
     } // stage ROS Tests
-
-    stage('Coverage') {
-      parallel {
-
-        stage('code coverage (python)') {
-          agent {
-            docker {
-              image 'px4io/px4-dev-base:2019-01-01'
-              args '-e CCACHE_BASEDIR=$WORKSPACE -v ${CCACHE_DIR}:${CCACHE_DIR}:rw --cap-add SYS_PTRACE'
-            }
-          }
-          steps {
-            sh 'export'
-            sh 'make distclean'
-            sh 'make python_coverage'
-            withCredentials([string(credentialsId: 'FIRMWARE_CODECOV_TOKEN', variable: 'CODECOV_TOKEN')]) {
-              sh 'curl -s https://codecov.io/bash | bash -s - -F python'
-            }
-
-            sh 'make distclean'
-          }
-
-          when {
-            environment name: 'PX4_CMAKE_BUILD_TYPE', value: 'Coverage'
-          }
-        }
-
-        stage('unit tests') {
-          agent {
-            docker {
-              image 'px4io/px4-dev-base:2019-01-01'
-              args '-e CCACHE_BASEDIR=$WORKSPACE -v ${CCACHE_DIR}:${CCACHE_DIR}:rw --cap-add SYS_PTRACE'
-            }
-          }
-          steps {
-            sh 'export'
-            sh 'make distclean'
-            sh 'make px4_sitl_test test_results_junit'
-            withCredentials([string(credentialsId: 'FIRMWARE_CODECOV_TOKEN', variable: 'CODECOV_TOKEN')]) {
-              sh 'curl -s https://codecov.io/bash | bash -s - -F unittest'
-            }
-            sh 'make distclean'
-          }
-          when {
-            environment name: 'PX4_CMAKE_BUILD_TYPE', value: 'Coverage'
-          }
-        }
-
-      } // parallel
-    } // stage Coverage
 
   } //stages
 
