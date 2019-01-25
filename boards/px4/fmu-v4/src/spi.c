@@ -96,6 +96,15 @@ __EXPORT void stm32_spiinitialize(int mask)
 
 #endif
 
+#ifdef CONFIG_STM32_SPI4
+
+	if (mask & PX4_SPI_BUS_EXTERNAL) {
+		stm32_configgpio(GPIO_SPI4_CS_1); //add cs
+	}
+
+#endif /* CONFIG_STM32_SPI4 */
+
+
 }
 
 __EXPORT void stm32_spi1select(FAR struct spi_dev_s *dev, uint32_t devid, bool selected)
@@ -179,6 +188,21 @@ __EXPORT uint8_t stm32_spi2status(FAR struct spi_dev_s *dev, uint32_t devid)
 }
 #endif
 
+#ifdef CONFIG_STM32_SPI4
+__EXPORT void stm32_spi4select(FAR struct spi_dev_s *dev, uint32_t devid, bool selected)
+{
+	if (devid == PX4_SPIDEV_EXTERNAL) {
+		stm32_gpiowrite(GPIO_SPI4_CS_1, !selected); // add cs
+	}
+}
+
+__EXPORT uint8_t stm32_spi4status(FAR struct spi_dev_s *dev, uint32_t devid)
+{
+	return SPI_STATUS_PRESENT;
+}
+#endif /* CONFIG_STM32_SPI4 */
+
+
 __EXPORT void board_spi_reset(int ms)
 {
 	/* disable SPI bus 1  DRDY */
@@ -211,11 +235,13 @@ __EXPORT void board_spi_reset(int ms)
 	stm32_gpiowrite(GPIO_SPI1_MISO_OFF, 0);
 	stm32_gpiowrite(GPIO_SPI1_MOSI_OFF, 0);
 
-
 	/* N.B we do not have control over the SPI 2 buss powered devices
 	 * so the the ms5611 is not resetable.
+	 *
+	 * N.B we do not have control over the SPI 4 buss powered devices
+	 * without affecting all devices on GPIO_PERIPH_3V3 namely the WIFI link
+	 * so the SPI bus 4 is not resetable.
 	 */
-
 
 	/* set the sensor rail off (default) */
 	stm32_configgpio(GPIO_VDD_3V3_SENSORS_EN);
